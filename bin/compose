@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+declare -x PROJECT_DIR=${PROJECT_DIR:=$(pwd)}
+declare -x DOCKER_ENVIRONMENT=${DOCKER_ENVIRONMENT:=prod}
+
+declare -a DOCKER_AVAILABLE_ENVIRONMENTS=('prod' 'dev' 'macos');
+
+if [[ ! " ${DOCKER_AVAILABLE_ENVIRONMENTS[@]} " =~ " ${DOCKER_ENVIRONMENT} " ]]; then
+    echo "Invalid environment \"$DOCKER_ENVIRONMENT\""; exit 1;
+fi
+
+declare -a COMPOSE_FILES=();
+
+for app in apps/*
+do
+    DIR=${app%*/}
+
+    COMPOSE_FILES+=("$PROJECT_DIR/$app/.docker/docker-compose.yml");
+
+    if [[ "$DOCKER_ENVIRONMENT" == "dev" || "$DOCKER_ENVIRONMENT" == "macos" ]]; then
+        COMPOSE_FILES+=("$PROJECT_DIR/$DIR/.docker/docker-compose.dev.yml");
+
+        if [[ "$DOCKER_ENVIRONMENT" == "macos" ]]; then
+            COMPOSE_FILES+=("$PROJECT_DIR/$DIR/.docker/docker-compose.macos.yml");
+        fi
+    fi
+done
+
+declare -r COMPOSE_FILES_INLINE=$(printf " -f %s" "${COMPOSE_FILES[@]}");
+
+docker-compose ${COMPOSE_FILES_INLINE} ${@}
